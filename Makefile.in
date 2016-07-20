@@ -1,0 +1,100 @@
+ZTEPACKAGE_NAME=@PACKAGE_NAME@
+ZTEPACKAGE_STRING=@PACKAGE_STRING@
+ZTEPACKAGE_TARNAME=@PACKAGE_TARNAME@
+ZTEPACKAGE_VERSION=@PACKAGE_VERSION@
+
+prefix=/usr/local
+WVSTREAMS_INC=
+WVSTREAMS_LIB=
+WVSTREAMS_BIN=$(prefix)/bin
+WVSTREAMS_SRC=.
+
+PC_CFLAGS=$(shell pkg-config --cflags libwvstreams)
+ifeq ($(PC_CFLAGS),)
+ $(error WvStreams does not appear to be installed)
+endif
+CPPFLAGS+=$(PC_CFLAGS)
+
+PC_LIBS=$(shell pkg-config --libs libwvstreams)
+ifeq ($(PC_LIBS),)
+ $(error WvStreams does not appear to be installed)
+endif
+LIBS+=$(PC_LIBS)
+
+LIBUDEV_CFLAGS=$(shell pkg-config --cflags libudev)
+#ifeq ($(PC_CFLAGS),)
+# $(error libudev does not appear to be installed)
+#endif
+CPPFLAGS+=$(LIBUDEV_CFLAGS)
+
+LIBUDEV_LIBS=$(shell pkg-config --libs libudev)
+ifeq ($(LIBUDEV_LIBS),)
+ $(error libudev does not appear to be installed)
+endif
+LIBS+=$(LIBUDEV_LIBS)
+
+BINDIR=${prefix}/bin
+MANDIR=${prefix}/share/man
+
+include wvrules.mk
+
+default: all
+all: ztedial.a ztedial
+
+ztedial_a_OBJS = \
+    atevent.o \
+    atlistener.o \
+    atproperties.o \
+    dispatchmanager.o \
+    listener.o \
+    log.o \
+    messagedispatch.o \
+    modem.o\
+    mutex.o \
+    netlinkevent.o \
+    netlinkobserver.o \
+    signalistener.o \
+    syslog.o \
+    uevent.o \
+    ztedial.o \
+    ztedialmanager.o \
+    ztemodem.o \
+    ztemodemmanager.o \
+    ztenetlink.o
+
+ztedial.a: ${ztedial_a_OBJS}
+
+ztedial: LIBS+=-lpthread -lwvstreams -lwvutils -lwvbase
+ztedial: ztedial.a
+
+wvdial wvdialconf papchaptest pppmon: \
+  LIBS+=-luniconf -lwvstreams -lwvutils -lwvbase
+
+ztedial: main.o
+
+install-bin: all
+	[ -d ${BINDIR}      ] || install -d ${BINDIR}
+	[ -d ${PPPDIR}      ] || install -d ${PPPDIR}
+	install -m 0755 ztedial ${BINDIR}
+
+install-man:
+	[ -d ${MANDIR}/man1 ] || install -d ${MANDIR}/man1
+	[ -d ${MANDIR}/man5 ] || install -d ${MANDIR}/man5
+
+install: install-bin install-man
+
+uninstall-bin:
+	rm -f ${BINDIR}/ztedial
+
+uninstall-man:
+
+uninstall: uninstall-bin uninstall-man
+
+clean:
+	rm -f ztedial
+
+distclean:
+	rm -f version.h Makefile
+
+.PHONY: clean all install-bin install-man install uninstall-bin uninstall-man \
+	uninstall
